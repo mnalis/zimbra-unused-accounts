@@ -14,22 +14,35 @@ my $SKIP_NEVER = 1;	# if 1, skips all entries with "last logon" = "never"
 my $DEBUG = 1;
 
 $ENV{PATH}='/usr/sbin:/usr/bin:/sbin:/bin';
-my $CMD_ZMACCTS = 'su -l zimbra -s /bin/sh -c "zmaccts"';
+my $CMD_ZMACCTS	= 'su -l zimbra -s /bin/sh -c "zmaccts"';
+my $CMD_ZPUSH	= 'z-push-admin -a lastsync';
 
 
 #
 # no user serviceable parts below
 #
 
-# returns unix epoch for zimbra timestamp in format "02/20/13 10:34". Really, zimbra?? Y2Kbug forgotten already in 2005 ???
-sub get_timestamp($$) {
+# returns unix epoch for zmaccts timestamp in format "02/20/13 10:34". Really, zimbra?? Y2Kbug forgotten already in 2005 ???
+sub get_timestamp_zmaccts($$) {
 	my ($date, $time) = @_;
 	return 0 if $date eq 'never';
 	my ($month, $day, $year) = split '/', $date;
 	my ($hour, $min) = split ':', $time;
 	return timelocal (0, $min, $hour, $day, $month-1, $year);
 }
+# returns unix epoch for zpush timestamp in format "2020-03-26 17:33". 
+sub get_timestamp_zpush($$) {
+	my ($date, $time) = @_;
+	my ($year, $month, $day) = split '-', $date;
+	my ($hour, $min) = split ':', $time;
+	return timelocal (0, $min, $hour, $day, $month-1, $year);
+}
 
+my %USERS=();
+
+#
+# parse zmaccts logins
+#
 
 open my $zmaccts_fd, '-|', $CMD_ZMACCTS;
 # looks like:
@@ -52,7 +65,38 @@ while (<$zmaccts_fd>) {
 	next if $status eq 'locked';
 	if ($SKIP_NEVER) { next if $last_date eq 'never' }
 
-	my $timestamp = get_timestamp ($last_date, $last_time);
+	my $timestamp = get_timestamp_zmaccts ($last_date, $last_time);
 	my $localtime = localtime($timestamp);
-	$DEBUG && print "$account\t$last_date $last_time ($timestamp = $localtime)\n";
+	$DEBUG && print "zmaccts:\t$last_date $last_time ($timestamp = $localtime)\t$account\n";
+	$USERS{$account} = $timestamp;
 }
+close $zmaccts_fd;
+
+#
+# parse z-push-admin logins
+#
+
+open my $zpush_fd, '-|', $CMD_ZPUSH;
+# looks like:
+#All known devices and users and their last synchronization time
+#
+#Device id                           Synchronized user              Last sync time                   Short Ids
+#------------------------------------------------------------------------------------------------------------------
+#androidc1367075972                  user.name                      2020-03-26 17:33 ( 34 days ago)  No
+#androidc1367075972                  user.name@zimbra.example.com   2020-04-29 19:39 (  0 days ago)  No
+
+while (<$zpush_fd>) {
+	next if /^\s*$/;
+	next if /^\s*-+\s*$/;
+	next if /^Device id/;
+	next if /^All known devices and users/;
+	# we have now skipped all useless headers
+
+	my ($deviceid, $user, $last_date, $last_time, $junk) = split ' ', $_, 5;
+
+	my $timestamp = get_timestamp_zpush ($last_date, $last_time);
+	my $localtime = localtime($timestamp);
+	$DEBUG && print "zpush:\t$last_date $last_time ($timestamp = $localtime)\t$user\n";
+	#$USERS{$account} = $timestamp; FIXME update ako je noviji
+}
+close $zpush_fd;
