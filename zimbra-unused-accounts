@@ -1,0 +1,58 @@
+#!/usr/bin/perl -T
+# shows zimbra accounts which have not been used in some time
+# by Matija Nalis <mnalis-perl@axe.tomsoft.hr> GPLv3+, started 20200429 
+
+
+use strict;
+use warnings;
+use autodie qw/:all/;
+# use "apt install libipc-system-simple-perl"
+
+use Time::Local;
+
+my $SKIP_NEVER = 1;	# if 1, skips all entries with "last logon" = "never"
+my $DEBUG = 1;
+
+$ENV{PATH}='/usr/sbin:/usr/bin:/sbin:/bin';
+my $CMD_ZMACCTS = 'su -l zimbra -s /bin/sh -c "zmaccts"';
+
+
+#
+# no user serviceable parts below
+#
+
+# returns unix epoch for zimbra timestamp in format "02/20/13 10:34". Really, zimbra?? Y2Kbug forgotten already in 2005 ???
+sub get_timestamp($$) {
+	my ($date, $time) = @_;
+	return 0 if $date eq 'never';
+	my ($month, $day, $year) = split '/', $date;
+	my ($hour, $min) = split ':', $time;
+	return timelocal (0, $min, $hour, $day, $month-1, $year);
+}
+
+
+open my $zmaccts_fd, '-|', $CMD_ZMACCTS;
+# looks like:
+#
+#            account                          status             created       last logon
+# ------------------------------------   -----------     ---------------  ---------------
+#desk@zimbra.example.com                      active      02/20/13 10:34   04/24/20 09:31
+#user.name@zimbra.example.com                 active      02/17/20 13:28   04/19/20 12:05
+#galsync@zimbra.example.com                   active      10/24/12 02:25            never
+#[...]
+#                                  domain summary
+
+while (<$zmaccts_fd>) {
+	last if /^\s*domain summary\s*$/;
+	next if /^\s*$/;
+	my ($account, $status, $created_date, $created_time, $last_date, $last_time) = split;
+	next if $account eq 'account';
+	next if $account =~ /^-+$/;
+	# we have now skipped all useless headers
+	next if $status eq 'locked';
+	if ($SKIP_NEVER) { next if $last_date eq 'never' }
+
+	my $timestamp = get_timestamp ($last_date, $last_time);
+	my $localtime = localtime($timestamp);
+	$DEBUG && print "$account\t$last_date $last_time ($timestamp = $localtime)\n";
+}
