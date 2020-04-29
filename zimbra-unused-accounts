@@ -10,8 +10,9 @@ use autodie qw/:all/;
 
 use Time::Local;
 
-my $SKIP_NEVER = $ENV{SKIP_NEVER} || 1;	# if 1, skips all entries with "last logon" = "never"
-my $DEFAULT_DOMAIN = $ENV{DEFAULT_DOMAIN} || undef;
+my $SKIP_NEVER = $ENV{SKIP_NEVER} || 1;			# if 1, skips all entries with "last logon" = "never"
+my $DEFAULT_DOMAIN = $ENV{DEFAULT_DOMAIN} || undef;	# append default domain if it is missing in zpush
+my $IGN_FILE = '/etc/zimbra-unused-accounts.ignore';	# ignore users listed in that file
 my $DEBUG = $ENV{DEBUG} || 0;
 
 $ENV{PATH}='/usr/sbin:/usr/bin:/sbin:/bin';
@@ -38,6 +39,22 @@ sub get_timestamp_zpush($$) {
 	my ($hour, $min) = split ':', $time;
 	return timelocal (0, $min, $hour, $day, $month-1, $year);
 }
+
+
+my %IGN_USERS=();
+#
+# read config files, if they exists
+#
+eval {
+	open my $ign_fd, '<', $IGN_FILE;
+	while (<$ign_fd>) {
+		chomp;
+		next if /^\s*$/;
+		next if /^\s*#/;
+		$DEBUG > 1 && print "ignore user:\t$_\n";
+		$IGN_USERS{$_}=1;
+	}
+};
 
 my %USERS=();
 
@@ -102,3 +119,16 @@ while (<$zpush_fd>) {
 	$USERS{$account} = $timestamp if not defined $USERS{$account} or $timestamp > $USERS{$account};	# use latest timestamp only
 }
 close $zpush_fd;
+
+#
+# produce final report
+#
+
+my $now = time;
+foreach my $account (sort { $USERS{$a} <=> $USERS {$b} } keys %USERS) {
+	next if $IGN_USERS{$account};
+
+	my $timestamp = $USERS{$account};
+	my $localtime = localtime($timestamp);
+	$DEBUG && print "last:\t$timestamp ($localtime)\t$account\n";
+}
