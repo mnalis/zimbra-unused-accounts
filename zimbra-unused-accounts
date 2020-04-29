@@ -14,15 +14,21 @@ my $SKIP_NEVER = $ENV{SKIP_NEVER} || 1;			# if 1, skips all entries with "last l
 my $DEFAULT_DOMAIN = $ENV{DEFAULT_DOMAIN} || undef;	# append default domain if it is missing in zpush
 my $IGN_FILE = '/etc/zimbra-unused-accounts.ignore';	# ignore users listed in that file
 my $DEBUG = $ENV{DEBUG} || 0;
-
-$ENV{PATH}='/usr/sbin:/usr/bin:/sbin:/bin';
 my $CMD_ZMACCTS	= 'su -l zimbra -s /bin/sh -c "zmaccts"';
 my $CMD_ZPUSH	= 'z-push-admin -a lastsync';
 
+my $MAX_DAYS = $ARGV[0];
+$ENV{PATH}='/usr/sbin:/usr/bin:/sbin:/bin';
 
 #
 # no user serviceable parts below
 #
+
+if (!defined $MAX_DAYS) {
+	print STDERR "Usage: zimbra-unused-accounts <max_days>\n\n";
+	print STDERR "find Zimbra accounts which have not been used for at least max_days\n";
+	exit 1;
+}
 
 # returns unix epoch for zmaccts timestamp in format "02/20/13 10:34". Really, zimbra?? Y2Kbug forgotten already in 2005 ???
 sub get_timestamp_zmaccts($$) {
@@ -131,4 +137,10 @@ foreach my $account (sort { $USERS{$a} <=> $USERS {$b} } keys %USERS) {
 	my $timestamp = $USERS{$account};
 	my $localtime = localtime($timestamp);
 	$DEBUG && print "last:\t$timestamp ($localtime)\t$account\n";
+
+	my $diff = $now - $timestamp;
+	if ($diff > $MAX_DAYS*24*60*60) {
+		my $diff_days = int($diff/24/60/60);
+		print "$account too old ($diff_days > $MAX_DAYS days) - last used $localtime ($timestamp)\n";
+	}
 }
