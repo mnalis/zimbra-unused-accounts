@@ -1,6 +1,9 @@
 # zimbra-unused-accounts
 find Zimbra accounts which have not been used in some time
 
+## prerequisites
+ apt install libipc-system-simple-perl
+
 ## Usage (as user root):
 *  zimbra-unused-accounts 15
  finds all account older than 15 days days

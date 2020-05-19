@@ -14,7 +14,7 @@ my $SKIP_NEVER = $ENV{SKIP_NEVER} || 1;			# if 1, skips all entries with "last l
 my $DEFAULT_DOMAIN = $ENV{DEFAULT_DOMAIN} || undef;	# append default domain if it is missing in zpush
 my $IGN_FILE = '/etc/zimbra-unused-accounts.ignore';	# ignore users listed in that file
 my $DEBUG = $ENV{DEBUG} || 0;
-my $CMD_ZMACCTS	= 'su -l zimbra -s /bin/sh -c "zmaccts"';
+my $CMD_ZMACCTS	= 'su -l zimbra -s /bin/bash -c "zmaccts"';
 my $CMD_ZPUSH	= 'z-push-admin -a lastsync';
 
 my $MAX_DAYS = $ARGV[0];
