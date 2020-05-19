@@ -121,6 +121,7 @@ while (<$zpush_fd>) {
 
 	if ($account !~ /@/ and defined $DEFAULT_DOMAIN) { $account .= '@' . $DEFAULT_DOMAIN; }
 	$DEBUG > 2 && print "zpush:\tdatetime for accunt $account:\t$last_date\t$last_time\n";
+	if ($SKIP_NEVER) { next if $last_date eq 'never' }
 	my $timestamp = get_timestamp_zpush ($last_date, $last_time);
 	my $localtime = localtime($timestamp);
 	$DEBUG > 1 && print "zpush:\t$last_date $last_time ($timestamp = $localtime)\t$account\n";
