@@ -41,6 +41,7 @@ sub get_timestamp_zmaccts($$) {
 # returns unix epoch for zpush timestamp in format "2020-03-26 17:33". 
 sub get_timestamp_zpush($$) {
 	my ($date, $time) = @_;
+	return 0 if $date eq 'never';
 	my ($year, $month, $day) = split '-', $date;
 	my ($hour, $min) = split ':', $time;
 	return timelocal (0, $min, $hour, $day, $month-1, $year);
@@ -119,6 +120,7 @@ while (<$zpush_fd>) {
 	my ($deviceid, $account, $last_date, $last_time, $junk) = split ' ', $_, 5;
 
 	if ($account !~ /@/ and defined $DEFAULT_DOMAIN) { $account .= '@' . $DEFAULT_DOMAIN; }
+	$DEBUG > 2 && print "zpush:\tdatetime for accunt $account:\t$last_date\t$last_time\n";
 	my $timestamp = get_timestamp_zpush ($last_date, $last_time);
 	my $localtime = localtime($timestamp);
 	$DEBUG > 1 && print "zpush:\t$last_date $last_time ($timestamp = $localtime)\t$account\n";
