@@ -120,7 +120,7 @@ while (<$zpush_fd>) {
 	my ($deviceid, $account, $last_date, $last_time, $junk) = split ' ', $_, 5;
 
 	if ($account !~ /@/ and defined $DEFAULT_DOMAIN) { $account .= '@' . $DEFAULT_DOMAIN; }
-	$DEBUG > 2 && print "zpush:\tdatetime for accunt $account:\t$last_date\t$last_time\n";
+	$DEBUG > 2 && print "zpush:\tdatetime for account $account:\t$last_date\t$last_time\n";
 	if ($SKIP_NEVER) { next if $last_date eq 'never' }
 	my $timestamp = get_timestamp_zpush ($last_date, $last_time);
 	my $localtime = localtime($timestamp);
