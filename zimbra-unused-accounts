@@ -88,6 +88,7 @@ while (<$zmaccts_fd>) {
 	next if $account =~ /^-+$/;
 	# we have now skipped all useless headers
 	next if $status eq 'locked';
+	next if $status eq 'closed';
 	if ($SKIP_NEVER) { next if $last_date eq 'never' }
 
 	my $timestamp = get_timestamp_zmaccts ($last_date, $last_time);
