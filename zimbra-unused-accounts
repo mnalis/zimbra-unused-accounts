@@ -87,13 +87,14 @@ while (<$zmaccts_fd>) {
 	next if $account eq 'account';
 	next if $account =~ /^-+$/;
 	# we have now skipped all useless headers
-	next if $status eq 'locked';
-	next if $status eq 'closed';
 	if ($SKIP_NEVER) { next if $last_date eq 'never' }
 
 	my $timestamp = get_timestamp_zmaccts ($last_date, $last_time);
 	my $localtime = localtime($timestamp);
-	$DEBUG > 1 && print "zmaccts:\t$last_date $last_time ($timestamp = $localtime)\t$account\n";
+	$DEBUG > 1 && print "zmaccts:\t$last_date $last_time ($timestamp = $localtime)\t$status\t$account\n";
+	if ($status =~ /^locked|closed$/) {
+		$IGN_USERS{$account} = 2;
+	}
 	$USERS{$account} = $timestamp;
 }
 close $zmaccts_fd;
